@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>离群样本人工复核工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg-color: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #1F2937;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+            --highlight-bg: #FEF3C7;
+            --highlight-border: #F59E0B;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #setup-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: var(--card-bg);
+        }
+        .setup-card {
+            padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid var(--border); width: 400px;
+        }
+        .setup-card h1 { margin-top: 0; font-size: 24px; text-align: center;}
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 8px; }
+        .form-group input[type="text"], .form-group input[type="file"] {
+            width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box;
+        }
+        .btn {
+            background-color: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px;
+            cursor: pointer; font-size: 16px; font-weight: 500; width: 100%; transition: background 0.2s;
+        }
+        .btn:hover { background-color: var(--primary-hover); }
+        
+        #review-screen { display: none; flex-direction: column; height: 100%; }
+        header {
+            background-color: var(--card-bg); padding: 15px 24px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 10;
+        }
+        .header-info span { margin-right: 20px; font-weight: 500; color: var(--text-muted); }
+        .header-info strong { color: var(--primary); }
+        
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        
+        .left-panel { flex: 6; overflow-y: auto; padding: 20px; border-right: 1px solid var(--border); }
+        .data-card {
+            background: var(--card-bg); padding: 16px; border-radius: 8px; margin-bottom: 16px;
+            border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .data-card.highlight { background-color: var(--highlight-bg); border-color: var(--highlight-border); }
+        .data-card .title { font-size: 12px; color: var(--text-muted); font-weight: bold; margin-bottom: 8px; text-transform: uppercase; }
+        .data-card .content { font-size: 15px; line-height: 1.6; white-space: pre-wrap; }
+        
+        .right-panel { flex: 4; overflow-y: auto; padding: 20px; background: var(--card-bg); display: flex; flex-direction: column; }
+        .action-group { margin-bottom: 24px; }
+        .action-title { font-size: 16px; font-weight: 600; border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 16px; }
+        
+        .radio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .radio-item {
+            display: flex; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .radio-item:hover { border-color: var(--primary); background: #EEF2FF; }
+        .radio-item input { margin-right: 10px; }
+        
+        .dynamic-field { display: none; background: #F9FAFB; padding: 16px; border-radius: 8px; margin-top: 16px; border: 1px solid var(--border); }
+        .dynamic-field label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #374151; }
+        .dynamic-field input, .dynamic-field select, .dynamic-field textarea {
+            width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .dynamic-field select { background-color: white; cursor: pointer; }
+        .dynamic-field optgroup { font-weight: bold; color: var(--primary); }
+        .dynamic-field textarea { resize: vertical; min-height: 60px; }
+        
+        .footer-controls { margin-top: auto; padding-top: 20px; display: flex; justify-content: space-between; gap: 10px; }
+        .btn-outline { background: white; border: 1px solid var(--border); color: var(--text-main); font-weight: 500; }
+        .btn-outline:hover { background: #F9FAFB; }
+        .checkbox-group { display: flex; align-items: center; margin-top: 15px; }
+        .checkbox-group input { margin-right: 8px; transform: scale(1.2); }
+        .checkbox-group label { font-weight: 500; cursor: pointer; color: #DC2626;}
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen">
+        <div class="setup-card">
+            <h1>离群样本复核系统</h1>
+            <div class="form-group">
+                <label for="reviewer-name">复核人姓名 (必填)</label>
+                <input type="text" id="reviewer-name" placeholder="请输入你的名字">
+            </div>
+            <div class="form-group">
+                <label for="csv-file">导入复核数据 (CSV格式)</label>
+                <input type="file" id="csv-file" accept=".csv">
+            </div>
+            <button class="btn" onclick="initApp()">开始复核</button>
+        </div>
+    </div>
+
+    <div id="review-screen">
+        <header>
+            <div class="header-info">
+                <span>当前复核人: <strong id="ui-reviewer">未设置</strong></span>
+                <span>进度: <strong id="ui-progress">0 / 0</strong></span>
+            </div>
+            <div>
+                <button class="btn" style="background-color: #10B981;" onclick="exportCSV()">导出复核结果 (CSV)</button>
+            </div>
+        </header>
+        
+        <div class="main-container">
+            <div class="left-panel" id="data-panel">
+                <div class="data-card highlight">
+                    <div class="title">🎯 失败原因 (Cause) —— [关键判定字段]</div>
+                    <div class="content" id="d-cause"></div>
+                </div>
+                <div class="data-card highlight">
+                    <div class="title">📉 期待落差 (Expectation Gap) —— [关键判定字段]</div>
+                    <div class="content" id="d-expectation"></div>
+                </div>
+                <div class="data-card">
+                    <div class="title">微博正文</div>
+                    <div class="content" id="d-weibo"></div>
+                </div>
+                <div class="data-card">
+                    <div class="title">处理后文本</div>
+                    <div class="content" id="d-processed"></div>
+                </div>
+                <div class="data-card">
+                    <div class="title">AI 产品对象 (Target)</div>
+                    <div class="content" id="d-target"></div>
+                </div>
+                <div class="data-card">
+                    <div class="title">归因 (Attribution) & 责任 (Responsibility)</div>
+                    <div class="content" id="d-attr-resp"></div>
+                </div>
+                <div class="data-card">
+                    <div class="title">道德情绪 (Moral Emotions)</div>
+                    <div class="content" id="d-emotions"></div>
+                </div>
+                <div class="data-card">
+                    <div class="title">原有聚类文本 (Cluster Text)</div>
+                    <div class="content" id="d-cluster-text"></div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="action-group">
+                    <div class="action-title">1. 选择复核结果 (必选)</div>
+                    <div class="radio-grid" id="result-options">
+                        <label class="radio-item"><input type="radio" name="manual_review_result" value="并入已有小簇"> 并入已有小簇</label>
+                        <label class="radio-item"><input type="radio" name="manual_review_result" value="并入已有大主题"> 并入已有大主题</label>
+                        <label class="radio-item"><input type="radio" name="manual_review_result" value="新主题候选"> 新主题候选</label>
+                        <label class="radio-item"><input type="radio" name="manual_review_result" value="混合案例"> 混合案例</label>
+                        <label class="radio-item"><input type="radio" name="manual_review_result" value="标注存疑"> 标注存疑</label>
+                        <label class="radio-item"><input type="radio" name="manual_review_result" value="信息不足"> 信息不足</label>
+                        <label class="radio-item"><input type="radio" name="manual_review_result" value="保留离群"> 保留离群</label>
+                    </div>
+                </div>
+
+                <div class="action-group dynamic-field" id="group-small-cluster">
+                    <div class="action-title">选择或填写小簇信息</div>
+                    <label>选择已知小簇 (下拉可比对大簇):</label>
+                    <select id="cluster_selector" onchange="handleClusterSelect()">
+                        <option value="">-- 请下拉浏览并选择小簇 --</option>
+                        
+                        <optgroup label="[大主题 2] 理解推理与判断错误">
+                            <option value="8|统计任务计算错误">小簇 8: 统计任务计算错误</option>
+                            <option value="9|题目解答结果错误">小簇 9: 题目解答结果错误</option>
+                            <option value="10|同一题目答案不一">小簇 10: 同一题目答案不一</option>
+                            <option value="15|AI多场景判定结果错误">小簇 15: AI多场景判定结果错误</option>
+                            <option value="35|AI问答答复错误矛盾">小簇 35: AI问答答复错误矛盾</option>
+                            <option value="36|AI建议预测失误">小簇 36: AI建议预测失误</option>
+                        </optgroup>
+                        
+                        <optgroup label="[大主题 3] 平台机制与交互体验失败">
+                            <option value="5|AI内容推送错误">小簇 5: AI内容推送错误</option>
+                            <option value="11|AI审核误判合规内容">小簇 11: AI审核误判合规内容</option>
+                            <option value="12|AI辅助工作徒增负担">小簇 12: AI辅助工作徒增负担</option>
+                        </optgroup>
+                        
+                        <option value="custom">👉 列表中没有？我要手动填写其他小簇</option>
+                    </select>
+
+                    <div id="custom_cluster_inputs" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #D1D5DB;">
+                        <label style="color:#2563EB;">确认小簇 ID:</label>
+                        <input type="text" id="manual_cluster_id" placeholder="如: 12">
+                        <label style="color:#2563EB;">确认小簇名称:</label>
+                        <input type="text" id="manual_cluster_name" placeholder="填写目标小簇的名称">
+                    </div>
+                </div>
+
+                <div class="action-group dynamic-field" id="group-big-theme">
+                    <div class="action-title">选择大主题</div>
+                    <label>大主题分类:</label>
+                    <select id="manual_big_theme">
+                        <option value="">-- 请下拉选择大主题 --</option>
+                        <option value="1 | 智能设备感知执行失灵">1 | 智能设备感知执行失灵</option>
+                        <option value="2 | 理解推理与判断错误">2 | 理解推理与判断错误</option>
+                        <option value="3 | 平台机制与交互体验失败">3 | 平台机制与交互体验失败</option>
+                        <option value="4 | 事实幻觉与信息编造">4 | 事实幻觉与信息编造</option>
+                        <option value="5 | 生成质量与指令遵循失败">5 | 生成质量与指令遵循失败</option>
+                        <option value="6 | 智能客服服务阻滞">6 | 智能客服服务阻滞</option>
+                    </select>
+                </div>
+
+                <div class="action-group dynamic-field" id="group-new-theme">
+                    <div class="action-title">拟定新主题</div>
+                    <label>新主题名称:</label>
+                    <input type="text" id="new_theme_name" placeholder="请输入新主题名称">
+                </div>
+
+                <div class="action-group">
+                    <div class="action-title">2. 补充说明</div>
+                    <label style="font-size: 14px; font-weight: 500; margin-bottom: 6px; display: block;">判断理由 (一句话解释):</label>
+                    <textarea id="review_reason" placeholder="请简述为什么这样归类..."></textarea>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="need_second_review" value="是">
+                        <label for="need_second_review">不确定，需要二次复核 (存疑)</label>
+                    </div>
+                </div>
+
+                <div class="footer-controls">
+                    <button class="btn btn-outline" onclick="prevRow()">⬅ 上一条</button>
+                    <button class="btn" onclick="saveAndNext()">保存并进入下一条 ➡</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let csvData = [];
+        let currentIndex = 0;
+        let reviewer = "";
+
+        function initApp() {
+            reviewer = document.getElementById('reviewer-name').value.trim();
+            const file = document.getElementById('csv-file').files[0];
+            
+            if (!reviewer) { alert("请填写复核人姓名！"); return; }
+            if (!file) { alert("请上传CSV模板文件！"); return; }
+
+            Papa.parse(file, {
+                header: true, skipEmptyLines: true,
+                complete: function(results) {
+                    csvData = results.data;
+                    document.getElementById('setup-screen').style.display = 'none';
+                    document.getElementById('review-screen').style.display = 'flex';
+                    document.getElementById('ui-reviewer').innerText = reviewer;
+                    
+                    currentIndex = 0;
+                    for (let i = 0; i < csvData.length; i++) {
+                        if (!csvData[i]['manual_review_result']) {
+                            currentIndex = i;
+                            break;
+                        }
+                    }
+                    renderRow();
+                }
+            });
+        }
+
+        // 处理小簇下拉菜单的联动
+        function handleClusterSelect() {
+            const selector = document.getElementById('cluster_selector');
+            const customDiv = document.getElementById('custom_cluster_inputs');
+            const idInput = document.getElementById('manual_cluster_id');
+            const nameInput = document.getElementById('manual_cluster_name');
+
+            if (selector.value === 'custom') {
+                customDiv.style.display = 'block';
+                idInput.value = '';
+                nameInput.value = '';
+            } else if (selector.value !== "") {
+                customDiv.style.display = 'block';
+                const parts = selector.value.split('|');
+                idInput.value = parts[0];
+                nameInput.value = parts[1];
+            } else {
+                customDiv.style.display = 'none';
+                idInput.value = '';
+                nameInput.value = '';
+            }
+        }
+
+        function renderRow() {
+            if (currentIndex < 0) currentIndex = 0;
+            if (currentIndex >= csvData.length) {
+                alert("恭喜你，所有样本复核完毕！请点击右上角导出结果。");
+                currentIndex = csvData.length - 1;
+            }
+
+            document.getElementById('ui-progress').innerText = `${currentIndex + 1} / ${csvData.length}`;
+            const row = csvData[currentIndex];
+            
+            // 左侧填充
+            document.getElementById('d-cause').innerText = row['cause'] || "暂无";
+            document.getElementById('d-expectation').innerText = row['expectation_gap'] || "暂无";
+            document.getElementById('d-weibo').innerText = row['微博正文'] || "暂无";
+            document.getElementById('d-processed').innerText = row['处理后文本'] || "暂无";
+            document.getElementById('d-target').innerText = row['target'] || "暂无";
+            document.getElementById('d-attr-resp').innerText = `归因: ${row['attribution'] || '-'} \n责任: ${row['responsibility'] || '-'}`;
+            document.getElementById('d-emotions').innerText = row['moral_emotions'] || "暂无";
+            document.getElementById('d-cluster-text').innerText = row['cluster_text'] || "暂无";
+
+            // 右侧重置
+            document.querySelectorAll('input[name="manual_review_result"]').forEach(el => el.checked = false);
+            if (row['manual_review_result']) {
+                const rBtn = document.querySelector(`input[name="manual_review_result"][value="${row['manual_review_result']}"]`);
+                if(rBtn) rBtn.checked = true;
+            }
+            
+            // 小簇回填逻辑
+            const storedId = row['manual_cluster_id'] || "";
+            const storedName = row['manual_cluster_name'] || "";
+            const combinedVal = storedId && storedName ? `${storedId}|${storedName}` : "";
+            const selector = document.getElementById('cluster_selector');
+            
+            // 检查历史数据是否在预设的下拉菜单中
+            let foundInDropdown = false;
+            if (combinedVal) {
+                for (let i = 0; i < selector.options.length; i++) {
+                    if (selector.options[i].value === combinedVal) {
+                        selector.value = combinedVal;
+                        foundInDropdown = true;
+                        break;
+                    }
+                }
+                if (!foundInDropdown) { selector.value = 'custom'; }
+            } else {
+                selector.value = "";
+            }
+
+            document.getElementById('manual_cluster_id').value = storedId;
+            document.getElementById('manual_cluster_name').value = storedName;
+            
+            // 触发联动显示
+            handleClusterSelect();
+
+            document.getElementById('manual_big_theme').value = row['manual_big_theme'] || "";
+            document.getElementById('new_theme_name').value = row['new_theme_name'] || "";
+            document.getElementById('review_reason').value = row['review_reason'] || "";
+            document.getElementById('need_second_review').checked = (row['need_second_review'] === "是");
+
+            toggleDynamicFields();
+        }
+
+        document.querySelectorAll('input[name="manual_review_result"]').forEach(radio => {
+            radio.addEventListener('change', toggleDynamicFields);
+        });
+
+        function toggleDynamicFields() {
+            const selected = document.querySelector('input[name="manual_review_result"]:checked');
+            const val = selected ? selected.value : "";
+            
+            document.getElementById('group-small-cluster').style.display = (val === '并入已有小簇') ? 'block' : 'none';
+            document.getElementById('group-big-theme').style.display = (val === '并入已有大主题') ? 'block' : 'none';
+            document.getElementById('group-new-theme').style.display = (val === '新主题候选') ? 'block' : 'none';
+        }
+
+        function saveAndNext() {
+            const selectedResult = document.querySelector('input[name="manual_review_result"]:checked');
+            if (!selectedResult) { alert("请先选择复核结果！"); return; }
+
+            const row = csvData[currentIndex];
+            row['manual_review_result'] = selectedResult.value;
+            row['manual_cluster_id'] = document.getElementById('group-small-cluster').style.display === 'block' ? document.getElementById('manual_cluster_id').value : "";
+            row['manual_cluster_name'] = document.getElementById('group-small-cluster').style.display === 'block' ? document.getElementById('manual_cluster_name').value : "";
+            row['manual_big_theme'] = document.getElementById('group-big-theme').style.display === 'block' ? document.getElementById('manual_big_theme').value : "";
+            row['new_theme_name'] = document.getElementById('group-new-theme').style.display === 'block' ? document.getElementById('new_theme_name').value : "";
+            row['review_reason'] = document.getElementById('review_reason').value;
+            row['need_second_review'] = document.getElementById('need_second_review').checked ? "是" : "";
+            row['reviewer'] = reviewer;
+            
+            const d = new Date();
+            row['review_date'] = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,'0') + "-" + String(d.getDate()).padStart(2,'0');
+
+            currentIndex++;
+            renderRow();
+            document.querySelector('.right-panel').scrollTop = 0;
+        }
+
+        function prevRow() {
+            if (currentIndex > 0) { currentIndex--; renderRow(); }
+        }
+
+        function exportCSV() {
+            const csvOutput = Papa.unparse(csvData);
+            const blob = new Blob(["\uFEFF" + csvOutput], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `离群样本_复核结果_${reviewer}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
