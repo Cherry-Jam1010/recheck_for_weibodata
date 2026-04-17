@@ -176,7 +176,24 @@
                     <select id="cluster_selector" onchange="handleClusterSelect()">
                         <option value="">-- 请下拉浏览并选择小簇 --</option>
                         
+                        <optgroup label="[大主题 1] 智能设备感知执行失灵">
+                            <option value="0|扫地机器人功能故障">小簇 0: 扫地机器人功能故障</option>
+                            <option value="2|语音点歌播放错误">小簇 2: 语音点歌播放错误</option>
+                            <option value="4|自动驾驶行驶故障">小簇 4: 自动驾驶行驶故障</option>
+                            <option value="14|AI实体对象识别错误">小簇 14: AI实体对象识别错误</option>
+                            <option value="16|语音物体识别频繁出错">小簇 16: 语音物体识别频繁出错</option>
+                            <option value="17|人脸识别身份验证失败">小簇 17: 人脸识别身份验证失败</option>
+                            <option value="24|语音指令识别执行错误">小簇 24: 语音指令识别执行错误</option>
+                            <option value="25|智能设备无故异常运行">小簇 25: 智能设备无故异常运行</option>
+                            <option value="26|语音助手误唤醒故障">小簇 26: 语音助手误唤醒故障</option>
+                            <option value="28|AI输出内容离谱怪异">小簇 28: AI输出内容离谱怪异</option>
+                        </optgroup>
+
                         <optgroup label="[大主题 2] 理解推理与判断错误">
+                            <option value="1|AI翻译结果错误">小簇 1: AI翻译结果错误</option>
+                            <option value="3|导航路线规划错误">小簇 3: 导航路线规划错误</option>
+                            <option value="6|用户诉求理解错误">小簇 6: 用户诉求理解错误</option>
+                            <option value="7|简单计算逻辑错误">小簇 7: 简单计算逻辑错误</option>
                             <option value="8|统计任务计算错误">小簇 8: 统计任务计算错误</option>
                             <option value="9|题目解答结果错误">小簇 9: 题目解答结果错误</option>
                             <option value="10|同一题目答案不一">小簇 10: 同一题目答案不一</option>
@@ -189,6 +206,32 @@
                             <option value="5|AI内容推送错误">小簇 5: AI内容推送错误</option>
                             <option value="11|AI审核误判合规内容">小簇 11: AI审核误判合规内容</option>
                             <option value="12|AI辅助工作徒增负担">小簇 12: AI辅助工作徒增负担</option>
+                            <option value="13|各类AI检测结果误判">小簇 13: 各类AI检测结果误判</option>
+                            <option value="18|AI搜索结果不符合需求">小簇 18: AI搜索结果不符合需求</option>
+                            <option value="20|AI产品功能体验不佳">小簇 20: AI产品功能体验不佳</option>
+                            <option value="23|AI系统运行异常">小簇 23: AI系统运行异常</option>
+                            <option value="27|自动功能执行逻辑错误">小簇 27: 自动功能执行逻辑错误</option>
+                            <option value="29|AI功能表现不及预期">小簇 29: AI功能表现不及预期</option>
+                            <option value="30|AI对话交互体验不佳">小簇 30: AI对话交互体验不佳</option>
+                        </optgroup>
+
+                        <optgroup label="[大主题 4] 事实幻觉与信息编造">
+                            <option value="19|多领域事实信息编造">小簇 19: 多领域事实信息编造</option>
+                            <option value="21|科研文献资料编造">小簇 21: 科研文献资料编造</option>
+                            <option value="22|日常问题回答失实">小簇 22: 日常问题回答失实</option>
+                        </optgroup>
+
+                        <optgroup label="[大主题 5] 生成质量与指令遵循失败">
+                            <option value="31|AI生成文本质量低下">小簇 31: AI生成文本质量低下</option>
+                            <option value="34|AI生成图像效果不佳">小簇 34: AI生成图像效果不佳</option>
+                            <option value="37|生成内容不符指令">小簇 37: 生成内容不符指令</option>
+                            <option value="38|图像生成细节崩坏">小簇 38: 图像生成细节崩坏</option>
+                            <option value="39|内容生成质量低劣">小簇 39: 内容生成质量低劣</option>
+                        </optgroup>
+
+                        <optgroup label="[大主题 6] 智能客服服务阻滞">
+                            <option value="32|智能客服未解决用户诉求">小簇 32: 智能客服未解决用户诉求</option>
+                            <option value="33|AI客服转接人工失败">小簇 33: AI客服转接人工失败</option>
                         </optgroup>
                         
                         <option value="custom">👉 列表中没有？我要手动填写其他小簇</option>
